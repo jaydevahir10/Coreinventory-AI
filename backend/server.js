@@ -1,75 +1,37 @@
-const express = require("express");
-const cors = require("cors");
-const sqlite3 = require("sqlite3").verbose();
+const express    = require('express');
+const mongoose   = require('mongoose');
+const http       = require('http');
+const { Server } = require('socket.io');
+const cors       = require('cors');
+require('dotenv').config();
 
-const app = express();
+const app    = express();
+const server = http.createServer(app);
+const io     = new Server(server, {
+  cors: { origin: 'http://localhost:3000', methods: ['GET', 'POST'] }
+});
 
-app.use(cors());
+app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
-const db = new sqlite3.Database("./inventory.db");
+app.use('/api/auth',       require('./routes/authRoutes'));
+app.use('/api/products',   require('./routes/productRoutes'));
+app.use('/api/warehouse',  require('./routes/warehouseRoutes'));
+app.use('/api/receipts',   require('./routes/receiptRoutes'));
+app.use('/api/delivery',   require('./routes/deliveryRoutes'));
+app.use('/api/transfer',   require('./routes/transferRoutes'));
+app.use('/api/adjustment', require('./routes/adjustmentRoutes'));
+app.use('/api/dashboard',  require('./routes/dashboardRoutes'));
 
-db.run(
-"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT,password TEXT)"
-);
+app.set('io', io);
+app.get('/', (req, res) => res.send('CoreInventory API running'));
 
-db.run(
-"INSERT INTO users(username,password) VALUES('admin','admin123')"
-);
-
-app.get("/api/products",(req,res)=>{
-
-db.all("SELECT * FROM products",[],(err,rows)=>{
-res.json(rows);
-});
-
-});
-
-app.post("/api/products",(req,res)=>{
-
-const {name,quantity} = req.body;
-
-db.run(
-"INSERT INTO products(name,quantity) VALUES(?,?)",
-[name,quantity]
-);
-
-res.json({message:"Product added"});
-
-});
-
-app.listen(5000,()=>{
-console.log("Server running on port 5000");
-});
-
-app.post("/api/login", (req, res) => {
-
-  const { username, password } = req.body;
-
-  db.get(
-    "SELECT * FROM users WHERE username=? AND password=?",
-    [username, password],
-    (err, row) => {
-
-      if (row) {
-        res.json({ success: true });
-      } else {
-        res.json({ success: false });
-      }
-
-    }
-  );
-
-});
-
-app.get("/api/lowstock", (req, res) => {
-
-  db.all(
-    "SELECT * FROM products WHERE quantity < 5",
-    [],
-    (err, rows) => {
-      res.json(rows);
-    }
-  );
-
-});
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected → localhost:27017');
+    server.listen(process.env.PORT || 5000, () =>
+      console.log('Backend running → http://localhost:5000')
+    );
+  })
+  .catch(err => console.error(err));
