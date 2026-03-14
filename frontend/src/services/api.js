@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://coreinventory-ai.onrender.com/api"
+  baseURL: "https://coreinventory-ai.onrender.com/api",
   timeout: 10000
 });
 
